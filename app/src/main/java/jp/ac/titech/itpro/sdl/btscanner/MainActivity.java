@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private BluetoothAdapter btAdapter;
     private BroadcastReceiver btScanReceiver;
+    private IntentFilter btScanFilter;
 
     private final static int REQCODE_ENABLE_BT = 1111;
     private final static int REQCODE_PERMISSIONS = 2222;
@@ -83,19 +84,44 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
 
+        btScanReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                Log.d(TAG, "onReceive: " + action);
+                switch (intent.getAction()) {
+                case BluetoothDevice.ACTION_FOUND:
+                    BluetoothDevice device =
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    devListAdapter.add(device);
+                    devListAdapter.notifyDataSetChanged();
+                    break;
+                case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    break;
+                case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    break;
+                }
+            }
+        };
+        btScanFilter = new IntentFilter();
+        btScanFilter.addAction(BluetoothDevice.ACTION_FOUND);
+        btScanFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
+        btScanFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+
+        setupBT();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "onStart");
-        setupBT();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume");
+        registerReceiver(btScanReceiver, btScanFilter);
     }
 
     @Override
@@ -108,7 +134,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "onPause");
-        stopBT();
+        if (btAdapter != null && btAdapter.isDiscovering())
+            btAdapter.cancelDiscovery();
+        unregisterReceiver(btScanReceiver);
     }
 
     @Override
@@ -142,16 +170,52 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onOptionsItemSelected");
         switch (item.getItemId()) {
         case R.id.menu_scan:
-            devListAdapter.clear();
-            if (btAdapter.isDiscovering())
-                btAdapter.cancelDiscovery();
-            btAdapter.startDiscovery();
+            startScan();
             return true;
         case R.id.menu_stop:
-            btAdapter.cancelDiscovery();
+            stopScan();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void setupBT() {
+        Log.d(TAG, "setupBT");
+        if (!btAdapter.isEnabled()) {
+            startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE),
+                    REQCODE_ENABLE_BT);
+            return;
+        }
+        setupBT1();
+    }
+
+    private void setupBT1() {
+        Log.d(TAG, "setupBT1");
+    }
+
+    private void startScan() {
+        Log.d(TAG, "startScan");
+        for (String permission : PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this, permission) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, PERMISSIONS, REQCODE_PERMISSIONS);
+                return;
+            }
+        }
+        startScan1();
+    }
+
+    private void startScan1() {
+        Log.d(TAG, "startScan1");
+        devListAdapter.clear();
+        if (btAdapter.isDiscovering())
+            btAdapter.cancelDiscovery();
+        btAdapter.startDiscovery();
+    }
+
+    private void stopScan() {
+        Log.d(TAG, "stopScan");
+        btAdapter.cancelDiscovery();
     }
 
     @Override
@@ -173,86 +237,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int reqCode,
                                            @NonNull String[] permissions, @NonNull int[] grants) {
-        Log.d(TAG, "onRequestPermissionsResult: " + permissions.length + ", " + grants.length);
+        Log.d(TAG, "onRequestPermissionsResult");
         switch (reqCode) {
         case REQCODE_PERMISSIONS:
             for (int i = 0; i < grants.length; i++) {
                 if (grants[i] != PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this,
-                            getString(R.string.error_permission_denied, permissions[i]),
+                            getString(R.string.error_scanning_requires_permission, permissions[i]),
                             Toast.LENGTH_SHORT).show();
-                    finish();
+                    return;
                 }
             }
-            setupBT2();
+            startScan1();
             break;
         }
     }
-
-    private void setupBT() {
-        Log.d(TAG, "setupBT");
-        if (!btAdapter.isEnabled()) {
-            startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE),
-                    REQCODE_ENABLE_BT);
-            return;
-        }
-        setupBT1();
-    }
-
-    private void setupBT1() {
-        Log.d(TAG, "setupBT1");
-        for (String permission : PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(this, permission) !=
-                    PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, PERMISSIONS, REQCODE_PERMISSIONS);
-                return;
-            }
-        }
-        setupBT2();
-    }
-
-    private void setupBT2() {
-        Log.d(TAG, "setupBT2");
-        if (btScanReceiver == null) {
-            Log.d(TAG, "setupBT2: new btScanReceiver");
-            btScanReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    String action = intent.getAction();
-                    Log.d(TAG, "onReceive: " + action);
-                    switch (intent.getAction()) {
-                    case BluetoothDevice.ACTION_FOUND:
-                        BluetoothDevice device =
-                                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                        devListAdapter.add(device);
-                        devListAdapter.notifyDataSetChanged();
-                        break;
-                    case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
-                        break;
-                    case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
-                        break;
-                    }
-                }
-            };
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(BluetoothDevice.ACTION_FOUND);
-            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
-            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-            registerReceiver(btScanReceiver, filter);
-        }
-    }
-
-    private void stopBT() {
-        Log.d(TAG, "stopBT");
-        if (btAdapter != null && btAdapter.isDiscovering()) {
-            Log.d(TAG, "stopBT: btAdapter.cancelDiscovery()");
-            btAdapter.cancelDiscovery();
-        }
-        if (btScanReceiver != null) {
-            Log.d(TAG, "stopBT: unregister btScanReceiver");
-            unregisterReceiver(btScanReceiver);
-            btScanReceiver = null;
-        }
-    }
-
 }
