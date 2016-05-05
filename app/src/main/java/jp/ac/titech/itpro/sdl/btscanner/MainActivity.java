@@ -22,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,6 +32,8 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     private final static String TAG = "MainActivity";
+
+    private ProgressBar scanProgress;
 
     private ArrayList<BluetoothDevice> devList = null;
     private ArrayAdapter<BluetoothDevice> devListAdapter;
@@ -52,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
         setContentView(R.layout.activity_main);
+
+        scanProgress = (ProgressBar)findViewById(R.id.scan_progress);
 
         if (savedInstanceState != null)
             devList = savedInstanceState.getParcelableArrayList(KEY_DEVLIST);
@@ -97,8 +102,12 @@ public class MainActivity extends AppCompatActivity {
                     devListAdapter.notifyDataSetChanged();
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    scanProgress.setIndeterminate(true);
+                    invalidateOptionsMenu();
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    scanProgress.setIndeterminate(false);
+                    invalidateOptionsMenu();
                     break;
                 }
             }
@@ -162,6 +171,14 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         Log.d(TAG, "onCreateOptionsMenu");
         getMenuInflater().inflate(R.menu.main, menu);
+        if (btAdapter != null && btAdapter.isDiscovering()) {
+            menu.findItem(R.id.menu_scan).setVisible(false);
+            menu.findItem(R.id.menu_stop).setVisible(true);
+        }
+        else {
+            menu.findItem(R.id.menu_scan).setVisible(true);
+            menu.findItem(R.id.menu_stop).setVisible(false);
+        }
         return true;
     }
 
