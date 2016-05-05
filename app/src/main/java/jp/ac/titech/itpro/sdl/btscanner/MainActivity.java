@@ -86,10 +86,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(TAG, "onStart");
+        setupBT();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume");
-        setupBT();
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Log.d(TAG, "onRestart");
     }
 
     @Override
@@ -97,6 +109,18 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         Log.d(TAG, "onPause");
         stopBT();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy");
     }
 
     @Override
@@ -189,38 +213,46 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupBT2() {
         Log.d(TAG, "setupBT2");
-        btScanReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-                Log.d(TAG, "onReceive: " + action);
-                switch (intent.getAction()) {
-                case BluetoothDevice.ACTION_FOUND:
-                    BluetoothDevice device =
-                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    devListAdapter.add(device);
-                    devListAdapter.notifyDataSetChanged();
-                    break;
-                case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
-                    break;
-                case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
-                    break;
+        if (btScanReceiver == null) {
+            Log.d(TAG, "setupBT2: new btScanReceiver");
+            btScanReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    Log.d(TAG, "onReceive: " + action);
+                    switch (intent.getAction()) {
+                    case BluetoothDevice.ACTION_FOUND:
+                        BluetoothDevice device =
+                                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                        devListAdapter.add(device);
+                        devListAdapter.notifyDataSetChanged();
+                        break;
+                    case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                        break;
+                    case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                        break;
+                    }
                 }
-            }
-        };
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(BluetoothDevice.ACTION_FOUND);
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        registerReceiver(btScanReceiver, filter);
+            };
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(BluetoothDevice.ACTION_FOUND);
+            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
+            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+            registerReceiver(btScanReceiver, filter);
+        }
     }
 
     private void stopBT() {
         Log.d(TAG, "stopBT");
-        if (btAdapter != null && btAdapter.isDiscovering())
+        if (btAdapter != null && btAdapter.isDiscovering()) {
+            Log.d(TAG, "stopBT: btAdapter.cancelDiscovery()");
             btAdapter.cancelDiscovery();
-        if (btScanReceiver != null)
+        }
+        if (btScanReceiver != null) {
+            Log.d(TAG, "stopBT: unregister btScanReceiver");
             unregisterReceiver(btScanReceiver);
+            btScanReceiver = null;
+        }
     }
 
 }
