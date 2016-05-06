@@ -1,6 +1,7 @@
 package jp.ac.titech.itpro.sdl.btscanner;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
@@ -10,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -91,6 +93,21 @@ public class MainActivity extends AppCompatActivity {
         alert = new AlertDialog.Builder(this);
         devListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
+            @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+            private String getDeviceTypeFromDevice(BluetoothDevice device) {
+                for (Field field : device.getClass().getDeclaredFields()) {
+                    try {
+                        field.setAccessible(true);
+                        if (device.getType()==(int)field.get(device)) {
+                            return field.getName();
+                        }
+                    }
+                    catch (IllegalAccessException | ClassCastException e) {
+                    }
+                }
+                return "UNKNOWN";
+            }
+
             private String getDeviceStateFromDevice(BluetoothDevice device) {
                 for (Field field : device.getClass().getDeclaredFields()) {
                     try {
@@ -105,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
                 return "UNKNOWN";
             }
 
-            private String getDeviceTypeFromDevice(BluetoothDevice device) {
+            private String getDeviceClassFromDevice(BluetoothDevice device) {
                 BluetoothClass.Device btDev = new BluetoothClass.Device();
                 for (Field field : btDev.getClass().getDeclaredFields()) {
                     try {
@@ -125,8 +142,9 @@ public class MainActivity extends AppCompatActivity {
                 alert.setTitle(String.format("Name: %s", device.getName()));
                 alert.setMessage(
                         String.format(
-                                "MAC: %s\nClass: %s\nState: %s",
+                                "MAC: %s\nClass: %s\nType: %s\nState: %s",
                                 device.getAddress(),
+                                getDeviceClassFromDevice(device),
                                 getDeviceTypeFromDevice(device),
                                 getDeviceStateFromDevice(device)
                         )
