@@ -3,6 +3,7 @@ package jp.ac.titech.itpro.sdl.btscanner;
 import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -29,6 +30,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 
@@ -88,6 +90,36 @@ public class MainActivity extends AppCompatActivity {
         assert devListView != null;
         alert = new AlertDialog.Builder(this);
         devListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            private String getDeviceStateFromDevice(BluetoothDevice device) {
+                for (Field field : device.getClass().getDeclaredFields()) {
+                    try {
+                        field.setAccessible(true);
+                        if (device.getBondState()==(int)field.get(device)) {
+                            return field.getName();
+                        }
+                    }
+                    catch (IllegalAccessException | ClassCastException e) {
+                    }
+                }
+                return "UNKNOWN";
+            }
+
+            private String getDeviceTypeFromDevice(BluetoothDevice device) {
+                BluetoothClass.Device btDev = new BluetoothClass.Device();
+                for (Field field : btDev.getClass().getDeclaredFields()) {
+                    try {
+                        field.setAccessible(true);
+                        if (device.getBluetoothClass().getDeviceClass()==(int)field.get(btDev)) {
+                            return field.getName();
+                        }
+                    }
+                    catch (IllegalAccessException | ClassCastException e) {
+                    }
+                }
+                return "UNKNOWN";
+            }
+
             @Override public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
                 BluetoothDevice device = devList.get(pos);
                 alert.setTitle(String.format("Name: %s", device.getName()));
@@ -95,8 +127,8 @@ public class MainActivity extends AppCompatActivity {
                         String.format(
                                 "MAC: %s\nClass: %s\nState: %s",
                                 device.getAddress(),
-                                device.getBluetoothClass(),
-                                device.getBondState()
+                                getDeviceTypeFromDevice(device),
+                                getDeviceStateFromDevice(device)
                         )
                 );
                 alert.setPositiveButton("OK", null);
