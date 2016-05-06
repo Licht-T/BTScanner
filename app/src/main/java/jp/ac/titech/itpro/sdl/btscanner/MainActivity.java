@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -35,8 +36,9 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar scanProgress;
 
-    private ArrayList<BluetoothDevice> devList = null;
+    private ListView devListView;
     private ArrayAdapter<BluetoothDevice> devListAdapter;
+    private ArrayList<BluetoothDevice> devList = null;
     private final static String KEY_DEVLIST = "MainActivity.devList";
 
     private BluetoothAdapter btAdapter;
@@ -79,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
                 return view;
             }
         };
-        ListView devListView = (ListView) findViewById(R.id.dev_list);
+        devListView = (ListView) findViewById(R.id.dev_list);
         assert devListView != null;
         devListView.setAdapter(devListAdapter);
 
@@ -87,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         if (btAdapter == null) {
             Toast.makeText(this, R.string.toast_bt_is_not_available, Toast.LENGTH_SHORT).show();
             finish();
+            return;
         }
 
         btScanReceiver = new BroadcastReceiver() {
@@ -100,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
                             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     devListAdapter.add(device);
                     devListAdapter.notifyDataSetChanged();
+                    devListView.smoothScrollToPosition(devListAdapter.getCount());
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
                     scanProgress.setIndeterminate(true);
@@ -192,22 +196,22 @@ public class MainActivity extends AppCompatActivity {
         case R.id.menu_stop:
             stopScan();
             return true;
+        case R.id.menu_about:
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.app_name)
+                    .setMessage(R.string.about_dialog_message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
     private void setupBT() {
         Log.d(TAG, "setupBT");
-        if (!btAdapter.isEnabled()) {
+        if (!btAdapter.isEnabled())
             startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE),
                     REQCODE_ENABLE_BT);
-            return;
-        }
-        setupBT1();
-    }
-
-    private void setupBT1() {
-        Log.d(TAG, "setupBT1");
     }
 
     private void startScan() {
@@ -240,9 +244,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onActivityResult");
         switch (reqCode) {
         case REQCODE_ENABLE_BT:
-            if (resCode == Activity.RESULT_OK)
-                setupBT1();
-            else {
+            if (resCode != Activity.RESULT_OK) {
                 Toast.makeText(this, R.string.toast_bt_must_be_enabled, Toast.LENGTH_SHORT).show();
                 finish();
             }
