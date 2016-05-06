@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -21,6 +22,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -37,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar scanProgress;
 
     private ListView devListView;
+    private AlertDialog.Builder alert;
     private ArrayAdapter<BluetoothDevice> devListAdapter;
     private ArrayList<BluetoothDevice> devList = null;
     private final static String KEY_DEVLIST = "MainActivity.devList";
@@ -83,6 +86,23 @@ public class MainActivity extends AppCompatActivity {
         };
         devListView = (ListView) findViewById(R.id.dev_list);
         assert devListView != null;
+        alert = new AlertDialog.Builder(this);
+        devListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
+                BluetoothDevice device = devList.get(pos);
+                alert.setTitle(String.format("Name: %s", device.getName()));
+                alert.setMessage(
+                        String.format(
+                                "MAC: %s\nClass: %s\nState: %s",
+                                device.getAddress(),
+                                device.getBluetoothClass(),
+                                device.getBondState()
+                        )
+                );
+                alert.setPositiveButton("OK", null);
+                alert.show();
+            }
+        });
         devListView.setAdapter(devListAdapter);
 
         btAdapter = BluetoothAdapter.getDefaultAdapter();
